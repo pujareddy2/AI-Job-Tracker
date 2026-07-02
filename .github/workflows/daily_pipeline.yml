@@ -1,0 +1,279 @@
+# =============================================================================
+# GitHub Actions Workflow — AI Job Tracker Daily Production Pipeline
+# Phase 11: Production Automation, Orchestration & End-to-End Reliability
+# =============================================================================
+#
+# Triggers
+# --------
+#   • Manual   : workflow_dispatch with optional "force_fresh" checkbox
+#
+# NOTE:
+# The authoritative daily schedule now lives in career_os.yml.
+# This workflow is retained for manual / legacy testing only.
+#
+# Architecture
+# ------------
+# The workflow is split into three sequential jobs:
+#
+#   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+#   │  pre-flight  │ --> │   pipeline   │ --> │   post-run   │
+#   └──────────────┘     └──────────────┘     └──────────────┘
+#        validate              main                cleanup
+#
+# Required GitHub Secrets (Settings → Secrets → Actions)
+# -------------------------------------------------------
+#   GOOGLE_SHEET_ID        — the ID from your Google Sheet URL
+#   GOOGLE_CREDENTIALS     — the full contents of credentials/google_credentials.json
+#   GMAIL_ADDRESS          — your Gmail address (sender)
+#   GMAIL_PASSWORD         — your Gmail App Password (NOT your regular password)
+#
+# =============================================================================
+
+name: "AI Job Tracker — Daily Production Pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_fresh:
+        description: "Force a fresh pipeline run (ignore checkpoint)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      skip_cleanup:
+        description: "Skip post-run cleanup"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+# Cancel any in-progress workflow run if a new one is triggered
+concurrency:
+  group: ai-job-tracker-pipeline
+  cancel-in-progress: false
+
+jobs:
+  # ===========================================================================
+  # JOB 1: Pre-flight Validation
+  # Validates the environment and secrets before doing any real work.
+  # Fails fast if critical configuration is missing.
+  # ===========================================================================
+  pre-flight:
+    name: "Pre-flight: Environment & Secret Validation"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    outputs:
+      python_version: ${{ steps.pyver.outputs.version }}
+
+    steps:
+      # -----------------------------------------------------------------------
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      - name: "Set up Python 3.11"
+        id: pyver
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # -----------------------------------------------------------------------
+      - name: "Validate required GitHub Secrets are present"
+        run: |
+          echo "Checking required secrets..."
+          missing=0
+
+          check_secret() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::Secret '$name' is not set. Add it in Settings → Secrets → Actions."
+              missing=$((missing + 1))
+            else
+              echo "  [OK] $name is set."
+            fi
+          }
+
+          check_secret "GOOGLE_SHEET_ID"    "${{ secrets.GOOGLE_SHEET_ID }}"
+          check_secret "GOOGLE_CREDENTIALS" "${{ secrets.GOOGLE_CREDENTIALS }}"
+          check_secret "EMAIL_ADDRESS"      "${{ secrets.EMAIL_ADDRESS }}"
+          check_secret "EMAIL_PASSWORD"     "${{ secrets.EMAIL_PASSWORD }}"
+
+          if [ "$missing" -gt 0 ]; then
+            echo "::error::$missing required secret(s) are missing. Aborting pipeline."
+            exit 1
+          fi
+          echo "All required secrets are present."
+
+      # -----------------------------------------------------------------------
+      - name: "Install dependencies (pre-flight only)"
+        run: pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      - name: "Run unit test suite"
+        run: pytest tests/ --tb=short -q --ignore=tests/test_e2e_pipeline.py
+        env:
+          APP_ENV: "production"
+
+  # ===========================================================================
+  # JOB 2: Production Pipeline Execution
+  # Runs the complete end-to-end pipeline. All pipeline stages are executed
+  # inside Python via main.py with full checkpoint, health monitoring, and
+  # retry support.
+  # ===========================================================================
+  pipeline:
+    name: "Pipeline: Full End-to-End Execution"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: pre-flight
+
+    steps:
+      # -----------------------------------------------------------------------
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      - name: "Set up Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # -----------------------------------------------------------------------
+      - name: "Install dependencies"
+        run: pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      - name: "Write Google credentials file from secret"
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials/google_credentials.json
+          echo "[OK] google_credentials.json written."
+
+      # -----------------------------------------------------------------------
+      - name: "Create required runtime directories"
+        run: |
+          mkdir -p cache logs backups resume data/jobs
+
+      # -----------------------------------------------------------------------
+      - name: "Run AI Job Tracker Production Pipeline"
+        id: pipeline_run
+        env:
+          # Google Sheets
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS: credentials/google_credentials.json
+
+          # Email notification
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+
+          # Application
+          APP_ENV: "production"
+          LOG_LEVEL: "INFO"
+          MAX_RETRIES: "3"
+          BACKUP_RETENTION_DAYS: "7"
+        run: |
+          FORCE_FRESH=""
+          if [ "${{ github.event.inputs.force_fresh }}" = "true" ]; then
+            FORCE_FRESH="--force-fresh"
+            echo "Force-fresh mode enabled."
+          fi
+          python main.py $FORCE_FRESH
+
+      # -----------------------------------------------------------------------
+      - name: "Display health report"
+        if: always()
+        run: python main.py --health-only
+        env:
+          APP_ENV: "production"
+
+      # -----------------------------------------------------------------------
+      - name: "Upload health report as artifact"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "health-report-${{ github.run_number }}"
+          path: cache/health_report.json
+          retention-days: 30
+
+      # -----------------------------------------------------------------------
+      - name: "Upload pipeline logs as artifact"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "pipeline-logs-${{ github.run_number }}"
+          path: logs/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # -----------------------------------------------------------------------
+      - name: "Failure diagnostics"
+        if: failure()
+        run: |
+          echo "::group::Pipeline failure diagnostics"
+          echo "=== Health Report ==="
+          cat cache/health_report.json 2>/dev/null || echo "No health report found."
+          echo ""
+          echo "=== Cache directory ==="
+          ls -la cache/ 2>/dev/null || echo "Cache directory not found."
+          echo "=== Latest log ==="
+          ls -t logs/*.log 2>/dev/null | head -1 | xargs tail -50 2>/dev/null || echo "No log files found."
+          echo "::endgroup::"
+
+  # ===========================================================================
+  # JOB 3: Post-run Cleanup
+  # Runs after the pipeline completes (even on failure for logs).
+  # Removes stale cache files and old logs according to retention policy.
+  # ===========================================================================
+  post-run:
+    name: "Post-run: Cleanup & Summary"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: pipeline
+    if: always()
+
+    steps:
+      # -----------------------------------------------------------------------
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      - name: "Set up Python 3.11"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # -----------------------------------------------------------------------
+      - name: "Install dependencies"
+        run: pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      - name: "Run cleanup manager"
+        if: ${{ github.event.inputs.skip_cleanup != 'true' }}
+        run: python scripts/cleanup_manager.py
+        env:
+          APP_ENV: "production"
+
+      # -----------------------------------------------------------------------
+      - name: "Print pipeline summary"
+        if: always()
+        run: |
+          echo "### AI Job Tracker — Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Run Number | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trigger | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Force Fresh | ${{ github.event.inputs.force_fresh || 'false' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Runner OS | ubuntu-latest |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f cache/health_report.json ]; then
+            echo "**Health report available in Artifacts.**" >> $GITHUB_STEP_SUMMARY
+          fi

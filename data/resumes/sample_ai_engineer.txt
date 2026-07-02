@@ -1,0 +1,63 @@
+MIDDE SRAVYA
+Email: middepuja1005@gmail.com | Phone: +91-9876543210
+LinkedIn: linkedin.com/in/sravya-midde | GitHub: github.com/sravya-midde
+Location: Hyderabad, India | LeetCode: leetcode.com/sravya_midde
+
+EDUCATION
+B.Tech in Computer Science and Engineering
+Jawaharlal Nehru Technological University Hyderabad, Hyderabad
+CGPA: 9.1 / 10 | Expected Graduation: May 2027
+
+SKILLS
+Programming Languages: Python, JavaScript, SQL, C++
+Frameworks & Libraries: FastAPI, LangChain, LlamaIndex, React.js, NumPy, Pandas, Scikit-learn
+AI/ML: Large Language Models (LLMs), Retrieval Augmented Generation (RAG), Prompt Engineering, Vector Databases, Generative AI, NLP
+Databases: PostgreSQL, ChromaDB, Pinecone, Redis, MongoDB
+Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, GitHub Actions, Linux
+Tools: Git, VSCode, Jupyter Notebook, Postman, Pydantic
+
+EXPERIENCE
+AI Engineering Intern | TechCorp Solutions, Hyderabad | June 2025 - August 2025
+- Built a RAG pipeline using LangChain and ChromaDB to power an internal knowledge base assistant
+- Reduced query response latency by 40% through vector index optimization
+- Implemented FastAPI endpoints for LLM inference serving with async support
+- Technologies: Python, FastAPI, LangChain, ChromaDB, PostgreSQL, Docker
+
+Backend Engineering Intern | StartupXYZ, Remote | December 2024 - February 2025
+- Developed RESTful APIs using FastAPI and PostgreSQL for a SaaS product
+- Implemented OAuth2 authentication and JWT-based session management
+- Deployed services to AWS EC2 with automated CI/CD via GitHub Actions
+- Technologies: Python, FastAPI, PostgreSQL, AWS, Docker
+
+PROJECTS
+AI Job Tracker (Personal Project)
+- Production-quality AI-powered job tracking system using Python, Google Sheets API, and LangChain
+- Automated resume parsing, job relevance scoring, and multi-platform job scraping
+- Technologies: Python, FastAPI, LangChain, Google Sheets API, Pydantic, GitHub Actions
+
+RAG Knowledge Assistant
+- Multi-document Q&A system using LlamaIndex, ChromaDB, and OpenAI GPT-4
+- Supports PDF ingestion, semantic chunking, and conversational memory
+- Technologies: Python, LlamaIndex, ChromaDB, OpenAI, FastAPI, Streamlit
+
+CERTIFICATIONS
+- Google Cloud Associate Cloud Engineer (2025)
+- AWS Certified Cloud Practitioner (2024)
+- DeepLearning.AI: Building LLM Applications with LangChain (2025)
+
+HACKATHONS & COMPETITIONS
+- HackIndia 2025 - 2nd Place: Built an AI-powered legal document analyser using RAG
+- Smart India Hackathon 2024 - Finalist: Developed predictive agriculture platform using ML
+- Google DevFest Hackathon 2024 - Top 10: Created voice-based accessibility tool using NLP
+
+ACHIEVEMENTS & AWARDS
+- Top 5% on LeetCode (500+ problems solved)
+- University Merit Scholarship (2023, 2024)
+- Best Project Award — Department of CSE (2024)
+
+LANGUAGES
+English (Professional), Telugu (Native), Hindi (Conversational)
+
+VOLUNTEER & LEADERSHIP
+- Technical Lead, Google Developer Student Club (GDSC) - JNTUH Chapter (2024-2025)
+- Organized 5+ workshops on AI/ML and Cloud computing for 200+ students

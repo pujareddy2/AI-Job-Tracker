@@ -1,0 +1,90 @@
+# pytest configuration file
+# =============================================================================
+# All pytest settings are managed here so developers only need one command:
+#     pytest
+# (no flags required — everything is configured below)
+# =============================================================================
+
+[tool.pytest.ini_options]
+# Tell pytest where to look for tests
+testpaths = ["tests"]
+
+# Minimum pytest version required
+minversion = "8.0"
+
+# Default flags applied to every run:
+#   -v         verbose output (show each test name)
+#   --tb=short shorter traceback on failure
+#   -ra        show a short test summary for all except passed tests
+addopts = "-v --tb=short -ra"
+
+# Treat these directories as Python packages (avoids sys.path hacks)
+pythonpath = ["."]
+
+# Markers — declare custom markers here to avoid PytestUnknownMarkWarning
+markers = [
+    "unit: pure unit tests with no I/O",
+    "integration: tests that call external APIs or write to disk",
+    "slow: tests that take > 5 seconds",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage settings (used by pytest-cov when --cov flag is active)
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "venv/*",
+    "tests/*",
+    "*.egg-info/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "def __repr__",
+    "@abstractmethod",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
+
+# ---------------------------------------------------------------------------
+# Ruff — linter + formatter settings
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "ANN", # flake8-annotations (type hints)
+    "BLE", # flake8-blind-except
+]
+ignore = [
+    "ANN101",  # missing type annotation for `self`
+    "ANN102",  # missing type annotation for `cls`
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "utils", "scrapers", "filters", "sheets",
+                     "notifications", "scheduler", "resume_parser"]
+
+# ---------------------------------------------------------------------------
+# Mypy — static type checker settings
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+exclude = ["venv/", "tests/"]

@@ -1,0 +1,52 @@
+ROHAN KUMAR
+Email: rohan.kumar@example.com | Phone: +91-9988776655
+LinkedIn: linkedin.com/in/rohan-kumar-dev | GitHub: github.com/rohankumar
+Location: Bangalore, India
+
+EDUCATION
+B.E. in Information Science and Engineering
+Visvesvaraya Technological University, Bangalore
+CGPA: 8.6 / 10 | Expected Graduation: June 2026
+
+SKILLS
+Programming Languages: Java, Python, Go, TypeScript
+Frameworks: Spring Boot, Django, Node.js, Express.js, gRPC
+Databases: MySQL, PostgreSQL, Redis, MongoDB, Elasticsearch
+Cloud & Infrastructure: AWS (ECS, RDS, SQS, CloudWatch), Kubernetes, Terraform, Ansible
+Tools: Git, Maven, Gradle, Jenkins, JIRA, IntelliJ IDEA
+Testing: JUnit, Mockito, pytest, Postman
+
+EXPERIENCE
+Backend Developer Intern | FinTech Startup, Bangalore | July 2025 - October 2025
+- Designed and implemented microservices architecture using Spring Boot and gRPC
+- Optimized database query performance improving throughput by 60%
+- Built event-driven pipelines using AWS SQS and Redis pub/sub
+- Technologies: Java, Spring Boot, PostgreSQL, Redis, AWS, Docker, Kubernetes
+
+Software Engineering Intern | Enterprise Solutions Ltd, Remote | Jan 2025 - March 2025
+- Developed REST APIs in Django for a B2B data platform serving 10K+ users
+- Implemented data validation pipelines reducing error rates by 35%
+- Technologies: Python, Django, PostgreSQL, Docker, Jenkins
+
+PROJECTS
+Distributed Task Scheduler
+- Fault-tolerant distributed job scheduler using Go, Redis, and gRPC
+- Supports horizontal scaling, task prioritization, and retry policies
+- Technologies: Go, gRPC, Redis, PostgreSQL, Docker, Kubernetes
+
+E-Commerce Microservices Platform
+- Full-stack e-commerce backend with 8 microservices, API Gateway, and service discovery
+- Technologies: Java, Spring Boot, MySQL, Kafka, AWS, Kubernetes
+
+CERTIFICATIONS
+- Oracle Certified Java SE 11 Developer (2025)
+- Certified Kubernetes Application Developer (CKAD) (2025)
+- AWS Solutions Architect Associate (2024)
+
+HACKATHONS
+- HackMIT 2025 - Finalist: Distributed ledger system for supply chain
+- JPMorgan Code for Good 2024 - Winner: NGO resource management platform
+
+ACHIEVEMENTS
+- GitHub: 30+ repositories, 200+ stars
+- Published technical blog on Medium: "Designing Scalable Microservices with Go"

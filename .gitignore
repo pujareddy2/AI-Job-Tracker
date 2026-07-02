@@ -1,0 +1,133 @@
+# =============================================================================
+# AI-Job-Tracker — .gitignore
+# =============================================================================
+# This file tells Git which files and folders to ignore so that secrets,
+# generated artefacts, and local developer tooling never reach the remote repo.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Python virtual environment
+# Never commit a venv — dependencies are reproduced via requirements.txt
+# ---------------------------------------------------------------------------
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# ---------------------------------------------------------------------------
+# Python cache & compiled bytecode
+# These are auto-generated at runtime and are machine-specific
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ---------------------------------------------------------------------------
+# Distribution / packaging artefacts
+# ---------------------------------------------------------------------------
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# ---------------------------------------------------------------------------
+# Environment / secret files
+# NEVER commit real credentials or API keys
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example        # keep the example template — it has no real secrets
+
+# ---------------------------------------------------------------------------
+# Google credentials & service-account JSON files
+# ---------------------------------------------------------------------------
+credentials/
+*.json
+!package.json        # allow Node package files if ever needed
+
+# ---------------------------------------------------------------------------
+# Log files
+# Logs are generated at runtime; rotate and store externally if needed
+# ---------------------------------------------------------------------------
+logs/
+*.log
+*.log.*
+
+# ---------------------------------------------------------------------------
+# Test artefacts & coverage reports
+# ---------------------------------------------------------------------------
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# ---------------------------------------------------------------------------
+# Type-checking / linting caches
+# ---------------------------------------------------------------------------
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# ---------------------------------------------------------------------------
+# IDE / editor files
+# Each developer uses their own tooling; do not impose settings
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ---------------------------------------------------------------------------
+# macOS system files
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ---------------------------------------------------------------------------
+# Windows system files
+# ---------------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------------
+# Linux system files
+# ---------------------------------------------------------------------------
+*~
+.nfs*
+
+# ---------------------------------------------------------------------------
+# Jupyter Notebooks (not used here, but good practice)
+# ---------------------------------------------------------------------------
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Temporary / scratch files
+# ---------------------------------------------------------------------------
+tmp/
+temp/
+scratch/
+*.bak
+*.tmp
+credentials/
+*.json
+
+# ---------------------------------------------------------------------------
+# Phase 3 Resume and Cache
+# ---------------------------------------------------------------------------
+resume/*
+!resume/README.md
+!resume/.gitkeep
+cache/*
+!cache/.gitkeep

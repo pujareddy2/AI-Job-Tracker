@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Career Operating System</title>
+    <!-- Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i data-lucide="compass" class="brand-icon"></i>
+                <span>CareerOS</span>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-tab="home">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="jobs">
+                    <i data-lucide="briefcase"></i>
+                    <span>Jobs Tracker</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="funnel">
+                    <i data-lucide="git-merge"></i>
+                    <span>Application Funnel</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="resume">
+                    <i data-lucide="file-text"></i>
+                    <span>Resume Health</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="skills">
+                    <i data-lucide="award"></i>
+                    <span>Skills Gap</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="outreach">
+                    <i data-lucide="mail"></i>
+                    <span>Outreach Hub</span>
+                </a>
+                <a href="#" class="menu-item" data-tab="settings">
+                    <i data-lucide="settings"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar" id="avatar-fallback">P</div>
+                    <div class="user-meta">
+                        <span class="user-name" id="profile-name">Puja Midde</span>
+                        <span class="user-role">AI Engineer Candidate</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Viewport -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-nav">
+                <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="global-search" placeholder="Global search across jobs, companies, skills...">
+                </div>
+                <div class="top-nav-actions">
+                    <button class="theme-toggle-btn" id="theme-toggle" title="Toggle Dark/Light Mode">
+                        <i data-lucide="moon" id="theme-icon"></i>
+                    </button>
+                    <div class="notification-bell">
+                        <i data-lucide="bell"></i>
+                        <span class="bell-badge"></span>
+                    </div>
+                    <div class="pipeline-badge" id="pipeline-status">
+                        <span class="status-dot green"></span>
+                        <span>Pipeline: Idle</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content Panels -->
+            <div class="viewport-panels">
+                
+                <!-- PANEL 1: Home Dashboard -->
+                <section class="panel active" id="tab-home">
+                    <div class="panel-header">
+                        <div>
+                            <h1 id="welcome-message">Welcome Back, Puja</h1>
+                            <p class="subtitle" id="last-sync">Last synced from pipeline: June 28, 2026</p>
+                        </div>
+                        <button class="action-btn" id="trigger-sync-btn">
+                            <i data-lucide="refresh-cw"></i>
+                            <span>Sync Now</span>
+                        </button>
+                    </div>
+
+                    <!-- Health Cards Row -->
+                    <div class="metrics-grid">
+                        <div class="metric-card premium-gradient">
+                            <div class="metric-header">
+                                <span>Career Health Score</span>
+                                <i data-lucide="activity"></i>
+                            </div>
+                            <div class="metric-value" id="health-score">82.4%</div>
+                            <div class="metric-desc" id="market-readiness">Status: Highly Prepared</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <span>Resume ATS Health</span>
+                                <i data-lucide="check-circle-2"></i>
+                            </div>
+                            <div class="metric-value" id="resume-health-value">75.0%</div>
+                            <div class="metric-desc">Derived from optimization engine</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <span>Application Rate</span>
+                                <i data-lucide="trending-up"></i>
+                            </div>
+                            <div class="metric-value" id="app-consistency-value">62.8%</div>
+                            <div class="metric-desc">Consistency metrics active</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <span>Total Matches</span>
+                                <i data-lucide="layers"></i>
+                            </div>
+                            <div class="metric-value" id="total-matches-count">0</div>
+                            <div class="metric-desc">Matching jobs collected</div>
+                        </div>
+                    </div>
+
+                    <!-- Two Column Body -->
+                    <div class="dashboard-body-grid">
+                        <!-- Left Column: Actions and AI Assistant -->
+                        <div class="dashboard-left-col">
+                            
+                            <!-- Action Center -->
+                            <div class="widget-card">
+                                <div class="widget-header">
+                                    <h3>Today's Action Center</h3>
+                                    <span class="badge red">Priority</span>
+                                </div>
+                                <div class="action-list" id="action-list-container">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- AI Assistant Panel -->
+                            <div class="widget-card ai-assistant-widget">
+                                <div class="widget-header">
+                                    <h3>AI Career Coach Recommendations</h3>
+                                    <i data-lucide="sparkles" class="coach-icon"></i>
+                                </div>
+                                <div class="ai-recs-list" id="ai-recs-container">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Right Column: Charts & Activity -->
+                        <div class="dashboard-right-col">
+                            <div class="widget-card">
+                                <div class="widget-header">
+                                    <h3>Outreach & Funnel Progress</h3>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="funnelChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="widget-card">
+                                <div class="widget-header">
+                                    <h3>Recent Activity Trend</h3>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="activityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PANEL 2: Jobs Tracker -->
+                <section class="panel" id="tab-jobs">
+                    <div class="panel-header">
+                        <div>
+                            <h1>Matched Opportunities</h1>
+                            <p class="subtitle">Search, sort, filter, and track pipeline stages for all matching jobs.</p>
+                        </div>
+                    </div>
+
+                    <div class="filter-bar">
+                        <div class="filter-group">
+                            <input type="text" id="job-search-input" placeholder="Filter by company or role...">
+                            <select id="job-status-filter">
+                                <option value="">All Statuses</option>
+                                <option value="Saved">Saved</option>
+                                <option value="Applied">Applied</option>
+                                <option value="Assessment">Assessment</option>
+                                <option value="Technical">Technical</option>
+                                <option value="HR">HR</option>
+                                <option value="Offer">Offer</option>
+                            </select>
+                            <input type="text" id="job-location-filter" placeholder="Location...">
+                        </div>
+                        <button class="action-btn-secondary" id="reset-job-filters">Clear</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="jobs-table">
+                            <thead>
+                                <tr>
+                                    <th>Role / Company</th>
+                                    <th>Match Score</th>
+                                    <th>Location</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobs-table-body">
+                                <!-- Rendered dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- PANEL 3: Application Funnel -->
+                <section class="panel" id="tab-funnel">
+                    <div class="panel-header">
+                        <div>
+                            <h1>Application Pipeline Stages</h1>
+                            <p class="subtitle">Visualize and update your active applications pipeline manually.</p>
+                        </div>
+                    </div>
+
+                    <!-- Kanban / Stage Columns -->
+                    <div class="kanban-board" id="kanban-board-container">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </section>
+
+                <!-- PANEL 4: Resume Health -->
+                <section class="panel" id="tab-resume">
+                    <div class="panel-header">
+                        <div>
+                            <h1>Resume Intelligence & ATS Health</h1>
+                            <p class="subtitle">Analyze dimension scores and receive recruiter-appeal improvement tips.</p>
+                        </div>
+                    </div>
+
+                    <div class="resume-grid">
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3>ATS Scoring Card</h3>
+                            </div>
+                            <div class="chart-container-large">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3>Recruiter Suggestions</h3>
+                            </div>
+                            <div class="suggestions-list" id="resume-suggestions-container">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PANEL 5: Skills Gap -->
+                <section class="panel" id="tab-skills">
+                    <div class="panel-header">
+                        <div>
+                            <h1>Market Technology Demand & Gaps</h1>
+                            <p class="subtitle">Based on required tech stacks across all parsed job opportunities.</p>
+                        </div>
+                    </div>
+
+                    <div class="skills-grid">
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3>Candidate Current Skills</h3>
+                            </div>
+                            <div class="chips-container" id="current-skills-container">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3>Prioritized Gaps & Action Plan</h3>
+                            </div>
+                            <div class="roadmap-list" id="skills-roadmap-container">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PANEL 6: Outreach Hub -->
+                <section class="panel" id="tab-outreach">
+                    <div class="panel-header">
+                        <div>
+                            <h1>AI Outreach Hub</h1>
+                            <p class="subtitle">Select any matched job below to view personalized cover letters, emails, and LinkedIn connection requests.</p>
+                        </div>
+                    </div>
+
+                    <div class="outreach-selector">
+                        <label for="outreach-job-select">Select Job Opportunity:</label>
+                        <select id="outreach-job-select">
+                            <option value="">-- Choose Job --</option>
+                            <!-- Rendered dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="outreach-editor-grid hidden" id="outreach-details-container">
+                        <!-- Left menu of templates -->
+                        <div class="outreach-docs-menu">
+                            <h4>Outreach Types</h4>
+                            <div class="outreach-menu-items" id="outreach-types-list">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+                        <!-- Right editor text area -->
+                        <div class="outreach-editor-main">
+                            <div class="editor-header">
+                                <h3 id="selected-doc-title">Cover Letter</h3>
+                                <div class="editor-actions">
+                                    <button class="action-btn-secondary" id="copy-btn">
+                                        <i data-lucide="copy"></i> Copy Text
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea id="outreach-text-area" readonly></textarea>
+                            <div class="outreach-scorecard" id="outreach-score-card">
+                                <!-- Scores rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PANEL 7: Settings -->
+                <section class="panel" id="tab-settings">
+                    <div class="panel-header">
+                        <div>
+                            <h1>System Configuration & Parameters</h1>
+                            <p class="subtitle">Modify preferences, preferred locations, and check service logs.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-form-container">
+                        <div class="widget-card">
+                            <form id="settings-form">
+                                <div class="form-group">
+                                    <label for="set-locations">Preferred Locations (comma separated)</label>
+                                    <input type="text" id="set-locations" value="Hyderabad, Remote, Bangalore">
+                                </div>
+                                <div class="form-group">
+                                    <label for="set-log-level">Logger Verbosity</label>
+                                    <select id="set-log-level">
+                                        <option value="DEBUG">DEBUG</option>
+                                        <option value="INFO" selected>INFO</option>
+                                        <option value="WARNING">WARNING</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="action-btn">Save Configurations</button>
+                            </form>
+                        </div>
+
+                        <div class="widget-card">
+                            <div class="widget-header">
+                                <h3>Telemetry & System Resource Status</h3>
+                            </div>
+                            <div class="telemetry-stats">
+                                <div class="telemetry-item">
+                                    <span class="label">CPU Usage:</span>
+                                    <span class="value">3.4%</span>
+                                </div>
+                                <div class="telemetry-item">
+                                    <span class="label">RAM Usage:</span>
+                                    <span class="value">412 MB / 16 GB</span>
+                                </div>
+                                <div class="telemetry-item">
+                                    <span class="label">Storage Path:</span>
+                                    <span class="value">c:\Desktop\projects\AI-Job-Tracker</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>

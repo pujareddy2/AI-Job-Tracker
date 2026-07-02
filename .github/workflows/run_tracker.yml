@@ -1,0 +1,50 @@
+# =============================================================================
+# GitHub Actions Workflow - Manual Legacy Run
+# =============================================================================
+#
+# Scheduled production automation is enabled in:
+#   .github/workflows/daily_pipeline.yml
+#
+# This workflow is kept for manual runs only so the pipeline does not run twice
+# per day and send duplicate Google Sheet updates or duplicate emails.
+# =============================================================================
+
+name: AI Job Tracker - Manual Legacy Run
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-job-tracker:
+    name: Run Job Tracker Pipeline Manually
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run test suite
+        run: pytest --tb=short -q
+
+      - name: Run job tracker pipeline
+        env:
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_CREDENTIALS: credentials/google_credentials.json
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          APP_ENV: production
+          LOG_LEVEL: INFO
+        run: |
+          mkdir -p credentials cache logs backups resume
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials/google_credentials.json
+          python main.py --force-fresh

@@ -1,0 +1,133 @@
+# =============================================================================
+# AI-Job-Tracker — Python Dependencies
+# Phase 1: Project Foundation  |  Phase 2: Google Sheets Integration
+# =============================================================================
+# Run:  pip install -r requirements.txt
+# After activating the virtual environment:
+#   Windows:  venv\Scripts\activate
+#   macOS/Linux: source venv/bin/activate
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Environment variable management
+# Loads values from the .env file into os.environ at application startup.
+# Industry-standard practice for 12-factor app configuration.
+# ---------------------------------------------------------------------------
+python-dotenv==1.0.1
+
+# ---------------------------------------------------------------------------
+# Type-checking annotations (runtime support)
+# Provides backport of modern typing utilities for Python 3.9–3.11.
+# Used throughout the codebase for type hints and dataclass field typing.
+# ---------------------------------------------------------------------------
+typing-extensions==4.12.2
+
+# ---------------------------------------------------------------------------
+# Logging — structured log formatting
+# Provides structured, JSON-friendly logging that integrates cleanly with
+# cloud log aggregators (Datadog, CloudWatch, GCP Logging, etc.)
+# ---------------------------------------------------------------------------
+python-json-logger==2.0.7
+
+# ---------------------------------------------------------------------------
+# HTTP client — for future scraper and API integrations
+# Included now so the base utility layer can reference it in stubs.
+# Supports async, retries, and connection pooling out of the box.
+# ---------------------------------------------------------------------------
+requests==2.32.3
+
+# ---------------------------------------------------------------------------
+# Data validation — configuration and job-listing models
+# Pydantic provides schema validation, automatic type coercion, and
+# clear error messages for configuration objects (config.py).
+# ---------------------------------------------------------------------------
+pydantic==2.7.4
+pydantic-settings==2.3.4   # loads Pydantic models directly from .env files
+
+# ---------------------------------------------------------------------------
+# Testing framework
+# pytest is the de-facto Python testing standard.
+# Required now so tests can be written alongside every module.
+# ---------------------------------------------------------------------------
+pytest==8.2.2
+pytest-cov==5.0.0          # coverage reporting
+
+# ---------------------------------------------------------------------------
+# Code quality tooling (development only)
+# ruff: extremely fast linter + formatter (replaces flake8 + black + isort)
+# mypy: static type checker
+# ---------------------------------------------------------------------------
+ruff==0.4.10
+mypy==1.10.1
+
+# =============================================================================
+# Phase 2: Google Sheets Integration
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Google Sheets client
+# gspread is the de-facto Python library for Google Sheets.
+# It wraps the raw Sheets REST API with clean Pythonic calls and handles
+# OAuth token refresh automatically.
+# ---------------------------------------------------------------------------
+gspread==6.1.2
+
+# ---------------------------------------------------------------------------
+# Google authentication (Service Account)
+# google-auth handles JWT signing of service-account credentials so gspread
+# can authenticate without user interaction — essential for cron / CI/CD.
+# ---------------------------------------------------------------------------
+google-auth==2.30.0
+
+# ---------------------------------------------------------------------------
+# Fake data generation for testing
+# Used exclusively in tests/test_google_sheet.py and scripts/seed_sheet.py
+# to generate realistic-looking fake job records without real scraping.
+# ---------------------------------------------------------------------------
+faker==25.3.0
+
+# =============================================================================
+# Phase 3: Resume Intelligence Engine
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# PDF text extraction
+# pdfplumber preserves layout, handles multi-column and table PDFs — making
+# it far superior to PyPDF2 for resume content extraction.
+# ---------------------------------------------------------------------------
+pdfplumber==0.11.0
+
+# ---------------------------------------------------------------------------
+# DOCX (Word document) extraction
+# python-docx reads paragraphs, tables, headers and inline styles from
+# .docx files without requiring Microsoft Word.
+# ---------------------------------------------------------------------------
+python-docx==1.1.2
+
+# =============================================================================
+# Phase 10: Email Notification Engine
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# HTML Email Templating
+# Jinja2 is used to render responsive HTML career reports.
+# ---------------------------------------------------------------------------
+jinja2==3.1.4
+
+# ---------------------------------------------------------------------------
+# PDF Report Generation
+# ReportLab is used by notifications/report_generator.py to create PDF
+# attachments for career reports.
+# ---------------------------------------------------------------------------
+reportlab==4.2.2
+chardet==5.2.0
+
+# =============================================================================
+# Phase 11: Production Automation & Health Monitoring
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Telemetry and Health
+# psutil is used for capturing memory usage and CPU metrics in health reports.
+# ---------------------------------------------------------------------------
+psutil==7.2.2

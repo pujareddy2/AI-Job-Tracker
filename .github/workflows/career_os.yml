@@ -1,0 +1,640 @@
+name: AI Career Operating System
+
+on:
+  schedule:
+    - cron: "30 1 * * *"
+  workflow_dispatch:
+    inputs:
+      force_fresh:
+        description: Rebuild the runtime state from scratch
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-career-operating-system
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  production-run:
+    name: Autonomous production run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      MAX_RETRIES: "3"
+      BACKUP_RETENTION_DAYS: "7"
+      GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+      GOOGLE_CREDENTIALS: credentials/google_credentials.json
+      EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+      NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SCRAPER_MAX_WORKERS: "16"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Validate secrets
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+
+          required = {
+              "GOOGLE_SHEET_ID": os.getenv("GOOGLE_SHEET_ID", "").strip(),
+              "GOOGLE_CREDENTIALS_JSON": os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip(),
+              "EMAIL_ADDRESS": os.getenv("EMAIL_ADDRESS", "").strip(),
+              "EMAIL_PASSWORD": os.getenv("EMAIL_PASSWORD", "").strip(),
+          }
+
+          missing = [name for name, value in required.items() if not value]
+          if missing:
+              print("Missing required secrets:", ", ".join(missing))
+              sys.exit(1)
+
+          print("Required secrets are present.")
+          print("Notion secrets will be used only if a Notion updater script exists.")
+          PY
+
+      - name: Load environment variables
+        run: |
+          mkdir -p cache logs backups reports resume credentials
+
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          credentials_path = Path("credentials/google_credentials.json")
+          credentials_path.write_text(os.environ["GOOGLE_CREDENTIALS_JSON"], encoding="utf-8")
+          print(f"Wrote credentials to {credentials_path}")
+          PY
+
+          if [ -f "resume/latest_resume.pdf" ]; then
+            touch "resume/latest_resume.pdf"
+          else
+            newest_resume=$(find resume -maxdepth 1 -type f \( -iname "*.pdf" -o -iname "*.docx" -o -iname "*.txt" \) -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+            if [ -z "$newest_resume" ]; then
+              echo "::error::No resume file found in resume/. Add resume/latest_resume.pdf before running the workflow."
+              exit 1
+            fi
+            cp "$newest_resume" "resume/latest_resume.pdf"
+            touch "resume/latest_resume.pdf"
+          fi
+
+          echo "PIPELINE_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          echo "GOOGLE_CREDENTIALS=credentials/google_credentials.json" >> "$GITHUB_ENV"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force_fresh || 'false' }}" = "true" ]; then
+            rm -f cache/checkpoint.json cache/discovered_jobs.json cache/normalized_jobs.json cache/filtered_jobs.json cache/rejected_jobs.json cache/matched_jobs.json cache/deduplicated_jobs.json cache/duplicate_references.json cache/verified_jobs.json cache/link_validation_summary.json cache/health_report.json
+          fi
+
+      - name: Run Resume Analyzer
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run Resume Analyzer" python scripts/build_profile.py --force; then
+            echo "RESUME_ANALYZER_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "RESUME_ANALYZER_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Run Job Search Engine
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run Job Search Engine" python scripts/discover_jobs.py; then
+            echo "JOB_SEARCH_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "JOB_SEARCH_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Run Resume Matching
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run Resume Matching" python scripts/match_jobs.py; then
+            echo "RESUME_MATCHING_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "RESUME_MATCHING_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Run ATS Engine
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run ATS Engine" python scripts/resume_optimizer_cli.py --summary-only --top 25; then
+            echo "ATS_ENGINE_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "ATS_ENGINE_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Run Duplicate Detection
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run Duplicate Detection" python scripts/deduplicate_jobs.py; then
+            echo "DUPLICATE_DETECTION_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "DUPLICATE_DETECTION_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Run Official Link Validation
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run Official Link Validation" python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from scrapers.job_intelligence import URLHealthValidator
+
+          path = Path("cache/deduplicated_jobs.json")
+          if not path.exists():
+              raise SystemExit("cache/deduplicated_jobs.json is missing")
+
+          raw_jobs = json.loads(path.read_text(encoding="utf-8"))
+          verified_jobs = []
+          rejected_count = 0
+
+          for item in raw_jobs:
+              application = item.get("application", {}) if isinstance(item.get("application"), dict) else {}
+              url = application.get("application_url") or item.get("application_url") or item.get("url") or ""
+              if URLHealthValidator.is_valid_apply_url(url, check_live=True):
+                  verified_jobs.append(item)
+              else:
+                  rejected_count += 1
+
+          path.write_text(json.dumps(verified_jobs, indent=2), encoding="utf-8")
+          (path.parent / "verified_jobs.json").write_text(json.dumps(verified_jobs, indent=2), encoding="utf-8")
+          (path.parent / "link_validation_summary.json").write_text(
+              json.dumps({"verified_jobs": len(verified_jobs), "dead_links": rejected_count}, indent=2),
+              encoding="utf-8",
+          )
+          print(f"Verified {len(verified_jobs)} jobs; rejected {rejected_count} dead/broken links.")
+          PY
+          then
+            echo "OFFICIAL_LINK_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "OFFICIAL_LINK_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Update Google Sheets
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Update Google Sheets" python scripts/sync_sheet.py; then
+            echo "GOOGLE_UPDATED=success" >> "$GITHUB_ENV"
+          else
+            echo "GOOGLE_UPDATED=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Update Notion
+        continue-on-error: true
+        run: |
+          if [ -f "scripts/update_notion.py" ]; then
+            if [ -z "${NOTION_TOKEN:-}" ] || [ -z "${NOTION_DATABASE_ID:-}" ]; then
+              echo "::warning::Notion updater exists, but Notion secrets are missing. Skipping."
+              echo "NOTION_UPDATED=skipped" >> "$GITHUB_ENV"
+              exit 0
+            fi
+
+            if python scripts/update_notion.py; then
+              echo "NOTION_UPDATED=success" >> "$GITHUB_ENV"
+            else
+              echo "NOTION_UPDATED=failed" >> "$GITHUB_ENV"
+              exit 1
+            fi
+          else
+            echo "::notice::No Notion updater module exists in this repository. Skipping Notion sync."
+            echo "NOTION_UPDATED=skipped" >> "$GITHUB_ENV"
+          fi
+
+      - name: Generate Analytics
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Generate Analytics" python scripts/refresh_dashboard.py; then
+            echo "ANALYTICS_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "ANALYTICS_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Generate Daily Report
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Generate Daily Report" python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from job_model.validator import JobValidator
+          from notifications.report_generator import ReportGenerator
+
+          source = Path("cache/deduplicated_jobs.json")
+          if not source.exists():
+              raise SystemExit("cache/deduplicated_jobs.json is missing")
+
+          raw_jobs = json.loads(source.read_text(encoding="utf-8"))
+          validator = JobValidator()
+          jobs = [validator.normalize(item) for item in raw_jobs]
+
+          generator = ReportGenerator()
+          html = generator.generate_html_report(jobs)
+          csv_bytes = generator.generate_csv_report(jobs)
+          json_bytes = generator.generate_json_report(jobs)
+          pdf_bytes = generator.generate_pdf_report(jobs)
+
+          reports_dir = Path("reports")
+          reports_dir.mkdir(parents=True, exist_ok=True)
+
+          (reports_dir / "daily_report.html").write_text(html, encoding="utf-8")
+          (reports_dir / "daily_report.csv").write_bytes(csv_bytes)
+          (reports_dir / "daily_report.json").write_bytes(json_bytes)
+          (reports_dir / "daily_report.pdf").write_bytes(pdf_bytes)
+          print(f"Wrote daily report assets to {reports_dir}")
+          PY
+          then
+            echo "DAILY_REPORT_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "DAILY_REPORT_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Send Email
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Send Email" python scripts/send_notifications.py; then
+            echo "EMAIL_SENT=success" >> "$GITHUB_ENV"
+          else
+            echo "EMAIL_SENT=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Archive Logs
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Archive Logs" python scripts/backup_manager.py; then
+            echo "LOG_ARCHIVE_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "LOG_ARCHIVE_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Summarize execution
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def load_json(path: Path, default):
+              if not path.exists():
+                  return default
+              try:
+                  return json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  return default
+
+          cache = Path("cache")
+          discovered = load_json(cache / "discovered_jobs.json", [])
+          verified = load_json(cache / "verified_jobs.json", load_json(cache / "deduplicated_jobs.json", []))
+          matched = load_json(cache / "matched_jobs.json", [])
+          link_summary = load_json(cache / "link_validation_summary.json", {})
+          resume_summary = load_json(cache / "resume_reports" / "career_summary.json", {})
+
+          def extract_company(job):
+              company = job.get("company", {}) if isinstance(job.get("company"), dict) else {}
+              return company.get("company_name", "Unknown")
+
+          def extract_match(job):
+              resume_match = job.get("resume_match", {}) if isinstance(job.get("resume_match"), dict) else {}
+              value = resume_match.get("candidate_match_score")
+              try:
+                  return float(value or 0.0)
+              except Exception:
+                  return 0.0
+
+          def average(values):
+              return round(sum(values) / len(values), 2) if values else 0.0
+
+          execution_seconds = 0
+          start_epoch = os.getenv("PIPELINE_START_EPOCH", "0")
+          try:
+              execution_seconds = max(0, int(__import__("time").time() - int(start_epoch))) if start_epoch else 0
+          except Exception:
+              execution_seconds = 0
+
+          summary_lines = [
+              "### AI Career Operating System - Execution Summary",
+              "",
+              "| Field | Value |",
+              "|---|---:|",
+              f"| Jobs Scanned | {len(discovered)} |",
+              f"| Verified Jobs | {len(verified)} |",
+              f"| Average Resume Match | {average([extract_match(job) for job in matched])} |",
+              f"| Average ATS | {resume_summary.get('average_ats_score', 0)} |",
+              f"| Duplicates | {max(0, len(matched) - len(verified))} |",
+              f"| Dead Links | {link_summary.get('dead_links', 0)} |",
+              f"| Execution Time | {execution_seconds}s |",
+              f"| Email Sent | {os.getenv('EMAIL_SENT', 'skipped')} |",
+              f"| Google Updated | {os.getenv('GOOGLE_UPDATED', 'skipped')} |",
+              f"| Notion Updated | {os.getenv('NOTION_UPDATED', 'skipped')} |",
+              f"| Workflow Status | {'success' if os.getenv('RESUME_ANALYZER_STATUS') == 'success' else 'degraded'} |",
+          ]
+
+          summary = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          summary.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+          print("Execution summary written to step summary.")
+          PY
+
+      - name: Upload logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ github.run_number }}
+          path: |
+            logs/
+            cache/health_report.json
+            cache/link_validation_summary.json
+            reports/
+          retention-days: 14
+          if-no-files-found: ignore
