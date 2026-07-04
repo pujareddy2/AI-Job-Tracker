@@ -129,5 +129,7 @@ credentials/
 resume/*
 !resume/README.md
 !resume/.gitkeep
+!resume/*.pdf
+!resume/*.docx
 cache/*
 !cache/.gitkeep
