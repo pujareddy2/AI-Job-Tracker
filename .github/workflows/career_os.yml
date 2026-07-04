@@ -306,38 +306,6 @@ jobs:
             exit 1
           fi
 
-      - name: Run ATS Engine
-        continue-on-error: true
-        run: |
-          stage_retry() {
-            local stage_name="$1"
-            shift
-            local attempt=1
-            local max_attempts=3
-            while [ "$attempt" -le "$max_attempts" ]; do
-              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
-              "$@"
-              status=$?
-              echo "::endgroup::"
-              if [ "$status" -eq 0 ]; then
-                return 0
-              fi
-              echo "::warning::$stage_name failed with exit code $status"
-              attempt=$((attempt + 1))
-              if [ "$attempt" -le "$max_attempts" ]; then
-                sleep $((attempt * 2))
-              fi
-            done
-            return 1
-          }
-
-          if stage_retry "Run ATS Engine" python scripts/resume_optimizer_cli.py --summary-only --top 25; then
-            echo "ATS_ENGINE_STATUS=success" >> "$GITHUB_ENV"
-          else
-            echo "ATS_ENGINE_STATUS=failed" >> "$GITHUB_ENV"
-            exit 1
-          fi
-
       - name: Run Duplicate Detection
         continue-on-error: true
         run: |
@@ -367,6 +335,38 @@ jobs:
             echo "DUPLICATE_DETECTION_STATUS=success" >> "$GITHUB_ENV"
           else
             echo "DUPLICATE_DETECTION_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
+      - name: Run ATS Engine
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Run ATS Engine" python scripts/resume_optimizer_cli.py --summary-only --top 25; then
+            echo "ATS_ENGINE_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "ATS_ENGINE_STATUS=failed" >> "$GITHUB_ENV"
             exit 1
           fi
 
