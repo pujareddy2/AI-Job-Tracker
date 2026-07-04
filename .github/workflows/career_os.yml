@@ -206,6 +206,38 @@ jobs:
             exit 1
           fi
 
+      - name: Generate Normalized Jobs
+        continue-on-error: true
+        run: |
+          stage_retry() {
+            local stage_name="$1"
+            shift
+            local attempt=1
+            local max_attempts=3
+            while [ "$attempt" -le "$max_attempts" ]; do
+              echo "::group::$stage_name (attempt $attempt/$max_attempts)"
+              "$@"
+              status=$?
+              echo "::endgroup::"
+              if [ "$status" -eq 0 ]; then
+                return 0
+              fi
+              echo "::warning::$stage_name failed with exit code $status"
+              attempt=$((attempt + 1))
+              if [ "$attempt" -le "$max_attempts" ]; then
+                sleep $((attempt * 2))
+              fi
+            done
+            return 1
+          }
+
+          if stage_retry "Generate Normalized Jobs" python scripts/generate_normalized_jobs.py; then
+            echo "JOB_NORMALIZATION_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "JOB_NORMALIZATION_STATUS=failed" >> "$GITHUB_ENV"
+            exit 1
+          fi
+
       - name: Run Job Filtering
         continue-on-error: true
         run: |
