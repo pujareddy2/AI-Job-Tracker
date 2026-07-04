@@ -385,11 +385,13 @@ def collect_naukri(keyword: str, location: str, limit: int = 12, html: str | Non
         text = html
     else:
         try:
-            text = _get_html(url, headers=headers)
+            from scrapers.playwright_utils import get_html_with_playwright
+            text = get_html_with_playwright(url)
+            if not text:
+                raise ValueError("Playwright returned empty HTML for Naukri")
         except Exception as exc:
             logger.warning(f"Naukri scrape failed: {exc}")
             return []
-
     jobs: list[JobOpportunity] = []
     # Try to extract the JSON blob from the page (Naukri injects job data as JSON)
     json_match = re.search(r'"jobDetails"\s*:\s*(\[.*?\])\s*,\s*"noOfJobs"', text, re.S)
@@ -551,9 +553,11 @@ def collect_linkedin_public(keyword: str, location: str, limit: int = 12, html: 
         text = html
     else:
         try:
-            resp = requests.get(url, params=params, headers=headers, timeout=REQUEST_TIMEOUT)
-            resp.raise_for_status()
-            text = resp.text
+            from scrapers.playwright_utils import get_html_with_playwright
+            full_url = f"{url}?{urlencode(params)}"
+            text = get_html_with_playwright(full_url)
+            if not text:
+                raise ValueError("Playwright returned empty HTML for LinkedIn")
         except Exception as exc:
             logger.warning(f"LinkedIn guest API failed: {exc}")
             return []

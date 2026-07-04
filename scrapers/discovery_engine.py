@@ -95,22 +95,20 @@ class JobDiscoveryEngine:
 
         # Instantiate all 30 scrapers
         self.tier1_scrapers = [
-            VerifiedPlatformsScraper(), CompanyCareersScraper(), LinkedInScraper(), WellfoundScraper(),
+            VerifiedPlatformsScraper(), CompanyCareersScraper(), LinkedInScraper(),
             WorkAtAStartupScraper(), YCJobsScraper(), HuggingFaceJobsScraper(),
             GoogleCareersScraper(), MicrosoftCareersScraper(), AmazonJobsScraper(),
             NvidiaCareersScraper()
         ]
 
         self.tier2_scrapers = [
-            NaukriScraper(), FounditScraper(), CutshortScraper(),
-            HiristScraper(), InstahyreScraper(), IndeedScraper(),
-            FreshersworldScraper(), InternshalaScraper(), UnstopScraper(),
+            NaukriScraper(), InstahyreScraper(), IndeedScraper(),
+            InternshalaScraper(), UnstopScraper(),
             HackerEarthScraper()
         ]
 
         self.tier3_scrapers = [
-            HackerRankJobsScraper(), TimesJobsScraper(), ShineScraper(),
-            ApnaScraper(), PlacementIndiaScraper(), FreshersNowScraper(),
+            HackerRankJobsScraper(), ApnaScraper(), FreshersNowScraper(),
             OffCampusJobsScraper(), RemoteOKScraper(), StartupDiscoveryScraper(),
             AIStartupGoogleScraper(), HimalayasScraper(), WeWorkRemotelyScraper(),
             WorkingNomadsScraper()

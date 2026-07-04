@@ -67,9 +67,19 @@ def collect_apna(keyword: str, location: str, limit: int = 10, html: str | None 
             "Referer": "https://apna.co/jobs",
         }
         try:
-            resp = requests.get(url, params=params, headers=headers, timeout=20)
-            resp.raise_for_status()
-            data = resp.json()
+            from scrapers.playwright_utils import get_html_with_playwright
+            full_url = f"{url}?{urllib.parse.urlencode(params)}"
+            text = get_html_with_playwright(full_url)
+            if not text:
+                raise ValueError("Playwright returned empty HTML for Apna")
+            
+            # Since the API is blocked and we get HTML, try to extract JSON-LD or API response
+            match = re.search(r'<pre>(.*?)</pre>', text, re.S) or re.search(r'(\{.*?\})', text, re.S)
+            if match:
+                data = json.loads(match.group(1))
+            else:
+                data = {}
+            
             for item in (data.get("data", {}).get("jobs") or data.get("jobs") or []):
                 title = _clean(item.get("title") or item.get("jobTitle") or "")
                 company = _clean(item.get("companyName") or item.get("company") or "")

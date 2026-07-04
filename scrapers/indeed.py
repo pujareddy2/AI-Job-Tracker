@@ -47,9 +47,11 @@ def collect_indeed_india(keyword: str, location: str, limit: int = 12, html: str
         text = html
     else:
         try:
-            resp = requests.get(url, params=params, headers=headers, timeout=25)
-            resp.raise_for_status()
-            text = resp.text
+            from scrapers.playwright_utils import get_html_with_playwright
+            full_url = f"{url}?{urllib.parse.urlencode(params)}"
+            text = get_html_with_playwright(full_url)
+            if not text:
+                raise ValueError("Playwright returned empty HTML for Indeed")
         except Exception as exc:
             logger.warning(f"Indeed India scrape failed: {exc}")
             return []

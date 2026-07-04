@@ -88,6 +88,10 @@ jobs:
 
           install_with_retry
 
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install chromium
+
       - name: Validate secrets
         run: |
           python - <<'PY'

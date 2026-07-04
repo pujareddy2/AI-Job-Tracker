@@ -39,9 +39,17 @@ def collect_instahyre(keyword: str, location: str, limit: int = 10, html: str | 
         "Referer": "https://www.instahyre.com/jobs/",
     }
     try:
-        resp = requests.get(url, params=params, headers=headers, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
+        from scrapers.playwright_utils import get_html_with_playwright
+        full_url = f"{url}?{urllib.parse.urlencode(params)}"
+        text = get_html_with_playwright(full_url)
+        if not text:
+            raise ValueError("Playwright returned empty HTML for Instahyre")
+        
+        match = re.search(r'(\{.*"results".*\})', text, re.S)
+        if match:
+            data = __import__("json").loads(match.group(1))
+        else:
+            data = {}
     except Exception as exc:
         logger.warning(f"Instahyre API failed: {exc}")
         return []
