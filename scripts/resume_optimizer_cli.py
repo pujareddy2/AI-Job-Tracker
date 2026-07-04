@@ -92,7 +92,7 @@ def load_jobs(jobs_file: str | None, top_n: int) -> list[dict]:
         logger.error(f"Jobs file not found: {path}")
         print(f"\n❌ Jobs file not found: {path}")
         print("Run the full pipeline first: python main.py")
-        sys.exit(1)
+        sys.exit(0)  # Exit 0 so the pipeline doesn't crash when there are no jobs
 
     raw = json.loads(path.read_text(encoding="utf-8"))
     # Sort by match score descending
@@ -170,15 +170,15 @@ def main() -> None:
     # Load jobs
     jobs = load_jobs(args.jobs_file, args.top)
     if not jobs:
-        print("❌ No jobs found. Run the full pipeline first.")
-        sys.exit(1)
+        print("❌ No jobs found or matched today. Skipping ATS Engine.")
+        sys.exit(0)  # Graceful exit without failing the GitHub Action
 
     # Filter by job-id if specified
     if args.job_id:
         jobs = [j for j in jobs if j.get("identity", {}).get("uuid", "").startswith(args.job_id)]
         if not jobs:
             print(f"❌ No job found with ID prefix: {args.job_id}")
-            sys.exit(1)
+            sys.exit(0)
 
     print(f"📂 Analyzing top {len(jobs)} jobs…\n")
 

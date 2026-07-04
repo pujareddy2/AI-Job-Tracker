@@ -464,26 +464,6 @@ jobs:
             exit 1
           fi
 
-      - name: Update Notion
-        continue-on-error: true
-        run: |
-          if [ -f "scripts/update_notion.py" ]; then
-            if [ -z "${NOTION_TOKEN:-}" ] || [ -z "${NOTION_DATABASE_ID:-}" ]; then
-              echo "::warning::Notion updater exists, but Notion secrets are missing. Skipping."
-              echo "NOTION_UPDATED=skipped" >> "$GITHUB_ENV"
-              exit 0
-            fi
-
-            if python scripts/update_notion.py; then
-              echo "NOTION_UPDATED=success" >> "$GITHUB_ENV"
-            else
-              echo "NOTION_UPDATED=failed" >> "$GITHUB_ENV"
-              exit 1
-            fi
-          else
-            echo "::notice::No Notion updater module exists in this repository. Skipping Notion sync."
-            echo "NOTION_UPDATED=skipped" >> "$GITHUB_ENV"
-          fi
 
       - name: Generate Analytics
         continue-on-error: true

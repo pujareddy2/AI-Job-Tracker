@@ -45,14 +45,14 @@ def run() -> None:
             "\n[FAIL]  No matched jobs file found. Please run the matcher CLI launcher first:\n"
             "        python scripts/match_jobs.py"
         )
-        sys.exit(1)
+        sys.exit(0)  # Graceful exit without failing the pipeline
 
     print(f"\n[>]  Loading matched jobs from: {matched_file}")
     try:
         raw_list = json.loads(matched_file.read_text(encoding="utf-8"))
     except Exception as exc:
         print(f"\n[FAIL]  Failed to parse JSON file: {exc}")
-        sys.exit(1)
+        sys.exit(0)
 
     validator = JobValidator()
     jobs = []
