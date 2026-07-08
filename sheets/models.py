@@ -19,14 +19,25 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 SHEET_HEADERS: list[str] = [
     "Date found",
     "Job title / company",
-    "Match score",
-    "Job type",
-    "Work mode",
     "Location",
-    "Salary / stipend",
-    "Experience / duration",
-    "Missing skills",
+    "Job type",
+    "Confidence Score",
+    "Confidence Grade",
+    "Confidence Category",
+    "Recommendation",
+    "Reason",
+    "Resume Match",
+    "ATS Match",
+    "Technology Match",
+    "Experience Match",
+    "Location Match",
+    "Role Match",
+    "Trust Score",
+    "Official Link Score",
+    "Freshness Score",
+    "Graduation Score",
     "Apply link",
+    "Raw Link",
     "Source",
     "Status",
     "Notes",
@@ -61,8 +72,19 @@ class JobRecord(BaseModel):
     eligibility: str = Field(default="Unknown", description="Eligibility details / graduation year batch.")
     resume_match: str = Field(default="0.0", description="Resume Match score.")
     ats_score: str = Field(default="0.0", description="ATS score.")
-    ai_match: str = Field(default="0.0", description="AI score.")
-    trust_score: str = Field(default="50.0", description="Trust score of this listing.")
+    technology_match: str = Field(default="0.0")
+    experience_match: str = Field(default="0.0")
+    location_match: str = Field(default="0.0")
+    role_match: str = Field(default="0.0")
+    trust_score: str = Field(default="0.0")
+    official_link_score: str = Field(default="0.0")
+    freshness_score: str = Field(default="0.0")
+    graduation_score: str = Field(default="0.0")
+    confidence_score: str = Field(default="0.0")
+    confidence_grade: str = Field(default="")
+    confidence_category: str = Field(default="")
+    recommendation: str = Field(default="")
+    reason: str = Field(default="")
     priority: str = Field(default="Medium", description="Application priority (High, Medium, Low).")
     status: str = Field(default="Not applied", description="Application lifecycle status.")
     current_stage: str = Field(default="Not applied", description="Lifecycle stage.")
@@ -176,14 +198,25 @@ class JobRecord(BaseModel):
         return [
             date_str,
             jt_company,
-            score,
-            self.employment_type or "Full-time",
-            work_mode,
             self.location,
-            self.salary,
-            self.experience,
-            m_skills,
+            self.employment_type or "Full-time",
+            self.confidence_score,
+            self.confidence_grade,
+            self.confidence_category,
+            self.recommendation,
+            self.reason,
+            self.resume_match,
+            self.ats_score,
+            self.technology_match,
+            self.experience_match,
+            self.location_match,
+            self.role_match,
+            self.trust_score,
+            self.official_link_score,
+            self.freshness_score,
+            self.graduation_score,
             apply_formula,
+            url_raw,
             self.platform or self.source,
             status_val,
             notes_val,
@@ -209,29 +242,41 @@ class JobRecord(BaseModel):
                 date_found = date_found_str
 
         jt_company = padded[1] or "Unknown — Unknown"
-        raw_match = padded[2]
-        if len(row) >= 13:
-            employment_type = padded[3]
-            work_mode = padded[4]
-            location_val = padded[5]
-            salary_val = padded[6]
-            experience_val = padded[7]
-            m_skills = padded[8]
-            apply_formula = padded[9]
-            source_val = padded[10]
-            status_val = padded[11] or "Not applied"
-            notes_val = padded[12]
-        else:
-            employment_type = "Full-time"
-            work_mode = ""
-            location_val = "Unknown"
-            salary_val = "Not Disclosed"
-            experience_val = "Not Specified"
-            m_skills = padded[3]
-            apply_formula = padded[4]
-            source_val = ""
-            status_val = padded[5] or "Not applied"
-            notes_val = padded[6]
+        location_val = padded[2]
+        employment_type = padded[3]
+        confidence_score = padded[4]
+        confidence_grade = padded[5]
+        confidence_category = padded[6]
+        recommendation = padded[7]
+        reason = padded[8]
+        resume_match = padded[9]
+        ats_score = padded[10]
+        technology_match = padded[11]
+        experience_match = padded[12]
+        location_match = padded[13]
+        role_match = padded[14]
+        trust_score = padded[15]
+        official_link_score = padded[16]
+        freshness_score = padded[17]
+        graduation_score = padded[18]
+        apply_link_formula = padded[19]
+        raw_link = padded[20]
+        source_val = padded[21]
+        status_val = padded[22] or "Not applied"
+        notes_val = padded[23]
+        
+        # Try to parse the URL out of the hyperlink formula
+        url_clean = ""
+        if raw_link:
+            url_clean = raw_link
+        elif apply_link_formula:
+            if apply_link_formula.upper().startswith("=HYPERLINK("):
+                import re
+                match = re.search(r'=HYPERLINK\("([^"]+)"', apply_link_formula, re.IGNORECASE)
+                if match:
+                    url_clean = match.group(1)
+            else:
+                url_clean = str(apply_link_formula).strip()
         
         # Parse job title and company
         if " — " in jt_company:
@@ -242,43 +287,35 @@ class JobRecord(BaseModel):
             role = jt_company
             company = "Unknown"
             
-        # Parse match score
-        try:
-            val_str = str(raw_match).replace("%", "").strip()
-            score = float(val_str)
-            if score <= 1.0:
-                score_pct = score * 100.0
-            else:
-                score_pct = score
-        except ValueError:
-            score_pct = 0.0
-        resume_match = f"{score_pct:.1f}"
-        
-        # Parse URL from formula
-        match = re.search(r'=HYPERLINK\("([^"]+)"', apply_formula, re.IGNORECASE)
-        if match:
-            url_val = match.group(1)
-        else:
-            url_val = apply_formula
-            
+        # url_clean is already handled above.
+
         return cls(
-            job_id="",
             company=company.strip(),
             role=role.strip(),
             location=str(location_val or "Unknown").strip(),
             employment_type=str(employment_type or "Full-time").strip(),
-            work_mode=str(work_mode or "On-site").strip(),
-            salary=str(salary_val or "Not Disclosed").strip(),
-            experience=str(experience_val or "Not Specified").strip(),
-            url=url_val.strip(),
-            resume_match=resume_match,
-            missing_skills=m_skills,
+            confidence_score=str(confidence_score),
+            confidence_grade=str(confidence_grade),
+            confidence_category=str(confidence_category),
+            recommendation=str(recommendation),
+            reason=str(reason),
+            resume_match=str(resume_match),
+            ats_score=str(ats_score),
+            technology_match=str(technology_match),
+            experience_match=str(experience_match),
+            location_match=str(location_match),
+            role_match=str(role_match),
+            trust_score=str(trust_score),
+            official_link_score=str(official_link_score),
+            freshness_score=str(freshness_score),
+            graduation_score=str(graduation_score),
+            url=url_clean.strip(),
             platform=str(source_val or "").strip(),
             status=status_val,
             current_stage=status_val,
             current_notes=notes_val,
             created=date_found,
-            updated=date_found
+            posting_date=date_found
         )
 
     @classmethod

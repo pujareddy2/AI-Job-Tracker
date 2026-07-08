@@ -200,11 +200,21 @@ class CareerTracker:
                 role=job.job.job_title,
                 location=job.location.location or "Unknown",
                 employment_type=job.job.employment_type,
-                work_mode="Remote" if job.location.remote else "Hybrid" if job.location.hybrid else "On-site",
-                salary=job.job.salary,
-                experience=job.job.experience_required,
-                resume_match=str(job.resume_match.candidate_match_score or 0.0),
-                missing_skills=missing_skills,
+                confidence_score=str(job.confidence.overall_score),
+                confidence_grade=job.confidence.grade,
+                confidence_category=job.confidence.category,
+                recommendation=job.confidence.recommendation,
+                reason=job.confidence.reason,
+                resume_match=str(job.confidence.resume_match_score),
+                ats_score=str(job.confidence.ats_match_score),
+                technology_match=str(job.confidence.technology_match_score),
+                experience_match=str(job.confidence.experience_match_score),
+                location_match=str(job.confidence.location_match_score),
+                role_match=str(job.confidence.role_match_score),
+                trust_score=str(job.confidence.trust_score),
+                official_link_score=str(job.confidence.official_link_score),
+                freshness_score=str(job.confidence.freshness_score),
+                graduation_score=str(job.confidence.graduation_score),
                 url=job.application.application_url,
                 platform=job.application.platform,
                 status=status_value,
@@ -228,15 +238,14 @@ class CareerTracker:
                 current_values_list = [row_dict.get(h, "") for h in SHEET_HEADERS]
                 # Compare match score as float to avoid formatting differences causing redundant updates
                 try:
-                    curr_score = float(str(current_values_list[2]).replace("%", "").strip())
-                    if curr_score > 1.0: curr_score /= 100.0
-                    new_score = float(updated_row[2])
+                    curr_score = float(str(current_values_list[4]).replace("%", "").strip())
+                    new_score = float(updated_row[4])
                     scores_match = abs(curr_score - new_score) < 1e-4
                 except Exception:
                     scores_match = False
 
                 values_to_compare = list(current_values_list)
-                values_to_compare[2] = updated_row[2] if scores_match else values_to_compare[2]
+                values_to_compare[4] = updated_row[4] if scores_match else values_to_compare[4]
                 
                 if updated_row != values_to_compare:
                     # Keep existing status and notes

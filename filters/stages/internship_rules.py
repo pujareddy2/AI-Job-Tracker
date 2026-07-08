@@ -27,27 +27,25 @@ class InternshipRulesFilter(BaseFilter):
 
         for job in jobs:
             rejections = []
-            is_intern = job.internship.is_internship
+            is_intern = job.internship.is_internship or "intern" in job.job.job_title.lower()
 
             if is_intern:
                 desc = job.job.job_description.lower()
                 
-                # Check explicit no-conversion terms
-                has_reject_keyword = any(term in desc for term in reject_keywords)
-                if has_reject_keyword:
-                    rejections.append("Internship explicitly states no conversion or PPO opportunities")
+                paid_keywords = ["stipend", "paid", "salary", "lpa", "₹", "inr", "/month"]
+                is_paid = any(term in desc for term in paid_keywords)
+                
+                has_ppo = any(term in desc for term in ppo_keywords) or job.internship.ppo_available
+                
+                if has_ppo:
+                    job.internship.ppo_available = True
+                    job.internship.ppo_probability = "High"
+                elif is_paid:
+                    job.internship.ppo_probability = "Unknown"
                 else:
-                    # Check PPO keywords
-                    has_ppo = any(term in desc for term in ppo_keywords) or job.internship.ppo_available
-                    
-                    if has_ppo:
-                        # Accept and mark as verified PPO
-                        job.internship.ppo_available = True
-                        job.internship.ppo_probability = "High"
-                    else:
-                        # Unsure -> Mark as "Needs Manual Review"
-                        job.application.status = "Needs Manual Review"
-                        job.internship.ppo_probability = "Medium"
+                    # Mark manual review for unpaid / unknown internships instead of outright rejecting
+                    job.application.status = "Needs Manual Review"
+                    job.internship.ppo_probability = "Unknown"
 
             if not rejections:
                 passed.append(job)

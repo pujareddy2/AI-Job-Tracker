@@ -59,7 +59,8 @@ from utils.exceptions import (
     SchedulerError,
 )
 from utils.checkpoint import CheckpointManager, PipelineStage
-from utils.health_monitor import HealthMonitor
+from observability_engine.tracker import ObservabilityTracker
+from observability_engine.validator import ValidationObserver, FailFastError
 
 logger = get_logger(__name__)
 
@@ -226,7 +227,7 @@ class ProductionPipeline:
     """
 
     def __init__(self, force_fresh: bool = False) -> None:
-        self.health = HealthMonitor()
+        self.health = ObservabilityTracker()
         self.checkpoint = CheckpointManager(settings.cache_dir / "checkpoint.json")
         self.validator = StageValidator()
         self.force_fresh = force_fresh
@@ -388,11 +389,16 @@ class ProductionPipeline:
                 keywords = ["Applied AI Engineer", "LLM Engineer", "Python Developer"]
             location = locations[0] if locations else "Remote"
 
-            from scrapers.discovery_engine import JobDiscoveryEngine
-            engine = JobDiscoveryEngine()
-            discovered = engine.discover_all_jobs(keywords=keywords, location=location)
+            from intelligence_engine.orchestrator import JobIntelligenceEngine
+            engine = JobIntelligenceEngine()
+            
+            # Use the first keyword as the base role for expansion
+            base_role = keywords[0] if keywords else "Applied AI Engineer"
+            discovered = engine.run_discovery(base_role=base_role, location=location)
 
-            output_file = settings.cache_dir / "discovered_jobs.json"
+            # Job Intelligence Engine outputs UniversalJobModels natively. 
+            # We can save this directly as normalized_jobs.json, bypassing the old normalization step.
+            output_file = settings.cache_dir / "normalized_jobs.json"
             serialized = [job.model_dump(mode="json") for job in discovered]
             output_file.write_text(json.dumps(serialized, indent=2), encoding="utf-8")
 
@@ -423,19 +429,12 @@ class ProductionPipeline:
         logger.info("Stage 4/9: Universal Job Normalization Engine")
 
         try:
-            from job_model.validator import JobValidator
-            validator = JobValidator()
-
-            # Use discovered jobs if available, otherwise fall back to mock data
-            discovered_file = settings.cache_dir / "discovered_jobs.json"
-            if discovered_file.exists():
-                raw_list = json.loads(discovered_file.read_text(encoding="utf-8"))
-            else:
-                # Fall back to mock generator for testing
-                from scripts.generate_normalized_jobs import run as gen_run
-                gen_run()
-                norm_file = settings.cache_dir / "normalized_jobs.json"
+            # We already generated normalized_jobs.json in Stage 3 using the new Intelligence Engine
+            norm_file = settings.cache_dir / "normalized_jobs.json"
+            if norm_file.exists():
                 raw_list = json.loads(norm_file.read_text(encoding="utf-8"))
+            else:
+                raw_list = []
 
             # If discovery returned 0 jobs, generate mock data for testing
             if not raw_list:
@@ -447,20 +446,8 @@ class ProductionPipeline:
                     cwd=str(PROJECT_ROOT)
                 )
                 raw_list = json.loads((settings.cache_dir / "normalized_jobs.json").read_text())
-            else:
-                jobs = []
-                for item in raw_list:
-                    try:
-                        jobs.append(validator.normalize(item))
-                    except Exception:
-                        pass
-
-                output_file = settings.cache_dir / "normalized_jobs.json"
-                output_file.write_text(
-                    json.dumps([j.to_dict() for j in jobs], indent=2), encoding="utf-8"
-                )
-                self.health.update_metrics(jobs_normalized=len(jobs))
-                logger.info("Normalized %d jobs.", len(jobs))
+                self.health.update_metrics(jobs_normalized=len(raw_list))
+                logger.info("Normalized %d jobs.", len(raw_list))
 
         except Exception as exc:
             self.health.end_stage("normalization", status="failed")
@@ -502,7 +489,7 @@ class ProductionPipeline:
                     pass
 
             pipeline = JobFilteringPipeline()
-            passed, rejected = pipeline.execute(jobs)
+            passed, rejected = pipeline.execute(jobs, tracker=self.health)
 
             # Serialize with acceptance/rejection reasons
             serialized_passed = []
@@ -530,10 +517,17 @@ class ProductionPipeline:
         except (ConfigurationError,):
             raise
         except Exception as exc:
-            self.health.end_stage("filtering", status="failed")
+            self.health.end_stage("filtering", status="failed", input_jobs=len(raw_list))
             raise FilterError(f"Filtering engine failed: {exc}") from exc
 
-        self.health.end_stage("filtering")
+        self.health.end_stage(
+            "filtering", 
+            input_jobs=len(raw_list), 
+            output_jobs=len(passed)
+        )
+        # Fail fast check
+        ValidationObserver.check_fail_fast("Job Filtering Engine", self.health.stages["filtering"])
+        
         self.checkpoint.save_state(PipelineStage.FILTERING)
         logger.info("[OK] Stage 5 complete: filtering finished.")
 
@@ -863,6 +857,9 @@ class ProductionPipeline:
                 "Self-validation failed. Missing expected pipeline cache outputs: " + ", ".join(missing)
             )
         logger.info("Self-validation cache outputs check passed.")
+
+        # Phase 22 Self Validation
+        ValidationObserver.self_validate(settings.cache_dir / "observability")
 
         # 1. Verify spreadsheet structure and check for formula/calculation errors
         try:

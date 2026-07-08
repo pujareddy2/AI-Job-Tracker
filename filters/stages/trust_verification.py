@@ -26,10 +26,12 @@ class TrustVerificationFilter(BaseFilter):
         # 1. Filter out low reliability platforms
         valid_trust = []
         for job in jobs:
-            if job.reliability.reliability_score < min_score:
+            has_verification = bool(job.company.company_careers_url) or bool(job.application.application_url)
+            
+            if job.reliability.reliability_score < min_score and not has_verification:
                 job.rejection_reasons = getattr(job, "rejection_reasons", [])
                 job.rejection_reasons.append(
-                    f"Platform reliability score {job.reliability.reliability_score} is below threshold of {min_score}"
+                    f"Platform reliability score {job.reliability.reliability_score} is below threshold of {min_score} and no verified URL found"
                 )
             else:
                 valid_trust.append(job)

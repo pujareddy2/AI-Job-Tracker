@@ -304,8 +304,9 @@
                         <p class="job-company">{{ job.company.company_name }} &bull; {{ job.location.location }}</p>
                     </div>
                     <div class="badges">
-                        <span class="badge badge-match">Match: {{ job.resume_match.candidate_match_score }}%</span>
-                        <span class="badge badge-trust">Trust: {{ job.reliability.reliability_score }}%</span>
+                        <span class="badge badge-match">Score: {{ job.confidence.overall_score }}%</span>
+                        <span class="badge badge-trust">Grade: {{ job.confidence.grade }}</span>
+                        <span class="badge badge-ppo">{{ job.confidence.category }}</span>
                     </div>
                 </div>
 
@@ -327,7 +328,7 @@
                 <!-- AI Rationale -->
                 <div class="analysis-section">
                     <div class="analysis-title">💡 Why We Recommend This Job</div>
-                    <div>{{ job.resume_match.why_recommended or "Matches Python/FastAPI backend profile." }}</div>
+                    <div>{{ job.confidence.reason or "Matches target profile." }}</div>
                 </div>
 
                 <!-- Readiness Engine -->

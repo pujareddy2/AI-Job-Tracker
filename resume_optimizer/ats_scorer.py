@@ -208,9 +208,10 @@ class ATSScorer:
         overall = round(min(overall, 100.0), 2)
 
         fit_category = (
-            "Strong Fit" if overall >= 75 else
-            "Good Fit" if overall >= 60 else
-            "Partial Fit" if overall >= 40 else
+            "Top Picks" if overall >= 90 else
+            "Priority" if overall >= 80 else
+            "Recommended" if overall >= 70 else
+            "Candidate" if overall >= 60 else
             "Weak Fit"
         )
 

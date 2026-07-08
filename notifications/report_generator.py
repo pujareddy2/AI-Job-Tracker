@@ -32,12 +32,10 @@ class ReportGenerator:
         )
 
     def _get_top_jobs(self, jobs: list[UniversalJobModel], limit: int = 10) -> list[UniversalJobModel]:
-        """Return the top jobs sorted primarily by candidate_match_score and trust_score."""
+        """Return the top jobs sorted primarily by confidence score."""
         
-        def sort_key(job: UniversalJobModel) -> tuple[int, float]:
-            match_score = job.resume_match.candidate_match_score or 0
-            trust_score = job.reliability.reliability_score
-            return (match_score, trust_score)
+        def sort_key(job: UniversalJobModel) -> float:
+            return job.confidence.overall_score
 
         sorted_jobs = sorted(jobs, key=sort_key, reverse=True)
         return sorted_jobs[:limit]
@@ -105,17 +103,17 @@ class ReportGenerator:
         import csv
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Date Found", "Company", "Role", "Match Score", "Missing Skills", "Apply Link", "Status", "Notes"])
+        writer.writerow(["Date Found", "Company", "Role", "Confidence Score", "Grade", "Category", "Reason", "Apply Link"])
         for job in jobs:
             writer.writerow([
                 job.metadata.discovered_date.split("T")[0] if job.metadata.discovered_date else "",
                 job.company.company_name,
                 job.job.job_title,
-                f"{job.resume_match.candidate_match_score or 0}%",
-                ", ".join(job.resume_match.resume_keywords_missing),
-                job.application.application_url,
-                job.application.status,
-                job.current_notes
+                f"{job.confidence.overall_score}%",
+                job.confidence.grade,
+                job.confidence.category,
+                job.confidence.reason,
+                job.application.application_url
             ])
         return output.getvalue().encode("utf-8")
 
@@ -199,14 +197,14 @@ class ReportGenerator:
 
         # Top Recommended Jobs
         story.append(Paragraph("Top Recommended Opportunities", section_style))
-        top_jobs = sorted(jobs, key=lambda j: j.resume_match.candidate_match_score or 0, reverse=True)[:5]
-        job_data = [["Company", "Role", "Score", "Status"]]
+        top_jobs = sorted(jobs, key=lambda j: j.confidence.overall_score, reverse=True)[:5]
+        job_data = [["Company", "Role", "Confidence", "Category"]]
         for job in top_jobs:
             job_data.append([
                 job.company.company_name,
                 job.job.job_title,
-                f"{job.resume_match.candidate_match_score or 0}%",
-                job.application.status
+                f"{job.confidence.overall_score}%",
+                job.confidence.category
             ])
         t_jobs = Table(job_data, colWidths=[110, 180, 50, 90])
         t_jobs.setStyle(TableStyle([

@@ -26,7 +26,6 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from scrapers.models import JobOpportunity
 from job_model.universal_model import (
     UniversalJobModel,
     IdentityModel,
@@ -80,9 +79,11 @@ class JobValidator:
         ValidationError
             If any mandatory field is missing, or data is malformed.
         """
-        # Convert Pydantic JobOpportunity object to dictionary if passed
-        if isinstance(raw_data, JobOpportunity):
+        # Convert Pydantic object to dictionary if passed
+        if hasattr(raw_data, "model_dump"):
             data = raw_data.model_dump(mode="json")
+        elif hasattr(raw_data, "dict"):
+            data = raw_data.dict()
         else:
             data = raw_data
 

@@ -21,30 +21,39 @@ class TechnologyMatchingFilter(BaseFilter):
 
     def filter(self, jobs: list[UniversalJobModel]) -> list[UniversalJobModel]:
         passed = []
-        target_techs = self.config.get("target_technologies", [])
+        skill_groups = {
+            "Python Ecosystem": ["python", "fastapi", "flask", "django"],
+            "LLM Technologies": ["llm", "openai", "anthropic", "claude", "gemini", "llama", "mistral", "langchain", "langgraph"],
+            "RAG & Vector": ["rag", "vector search", "embeddings", "pinecone", "chroma", "milvus", "faiss", "qdrant", "weaviate"],
+            "AI General": ["ai", "machine learning", "generative ai", "nlp", "backend", "automation", "artificial intelligence", "deep learning"]
+        }
 
         for job in jobs:
             desc = job.job.job_description.lower()
-            matched = []
-            missing = []
+            title = job.job.job_title.lower()
+            matched = set()
+            missing = set()
 
-            for tech in target_techs:
-                if tech.lower() in desc or tech.lower() in job.job.job_title.lower():
-                    matched.append(tech)
+            for group_name, keywords in skill_groups.items():
+                # If any keyword in the group matches, the whole group is a "match" for similarity
+                if any(k in desc or k in title for k in keywords):
+                    matched.add(group_name)
+                    # We can also add the specific keywords found
+                    matched.update([k for k in keywords if k in desc or k in title])
                 else:
-                    missing.append(tech)
+                    missing.add(group_name)
 
-            # Assign score (0 to 100)
-            score = int((len(matched) / len(target_techs)) * 100) if target_techs else 0
+            # Assign score based on how many groups were hit vs total groups
+            total_groups = len(skill_groups)
+            # Just count the top level groups that matched
+            matched_groups = [g for g in skill_groups.keys() if g in matched]
+            score = int((len(matched_groups) / total_groups) * 100) if total_groups else 0
+            
             job.resume_match.candidate_match_score = score
-            job.resume_match.resume_keywords_matched = matched
-            job.resume_match.resume_keywords_missing = missing
+            job.resume_match.resume_keywords_matched = list(matched)
+            job.resume_match.resume_keywords_missing = list(missing)
 
-            # If match score is extremely low (e.g. 0), we might reject
-            if score == 0:
-                job.rejection_reasons = getattr(job, "rejection_reasons", [])
-                job.rejection_reasons.append("Job description does not match any preferred technology keywords")
-            else:
-                passed.append(job)
+            # NEVER reject based on 0 match score here (trust the ATS engine later)
+            passed.append(job)
 
         return passed

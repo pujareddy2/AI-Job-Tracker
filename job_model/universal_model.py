@@ -152,6 +152,28 @@ class MetadataModel(BaseModel):
     timestamp: str = Field(..., description="Timestamp of parsing run.")
 
 
+class ConfidenceModel(BaseModel):
+    """Overall Phase 20 Confidence Scoring Engine Output."""
+
+    overall_score: float = Field(default=0.0, ge=0.0, le=100.0)
+    grade: str = Field(default="")
+    category: str = Field(default="")
+    recommendation: str = Field(default="")
+    reason: str = Field(default="")
+    
+    # 10 Dimensions
+    resume_match_score: float = Field(default=0.0)
+    ats_match_score: float = Field(default=0.0)
+    technology_match_score: float = Field(default=0.0)
+    experience_match_score: float = Field(default=0.0)
+    location_match_score: float = Field(default=0.0)
+    role_match_score: float = Field(default=0.0)
+    trust_score: float = Field(default=0.0)
+    official_link_score: float = Field(default=0.0)
+    freshness_score: float = Field(default=0.0)
+    graduation_score: float = Field(default=0.0)
+
+
 class UniversalJobModel(BaseModel):
     """
     Standardized, strongly-typed Universal Job Model schema.
@@ -163,10 +185,11 @@ class UniversalJobModel(BaseModel):
     location: LocationModel
     ai_classification: AIClassificationModel
     resume_match: ResumeMatchModel
-    application: ApplicationModel
-    internship: InternshipModel
-    reliability: ReliabilityModel
-    metadata: MetadataModel
+    application: ApplicationModel = Field(default_factory=ApplicationModel)
+    internship: InternshipModel = Field(default_factory=InternshipModel)
+    reliability: ReliabilityModel = Field(default_factory=ReliabilityModel)
+    metadata: MetadataModel = Field(default_factory=MetadataModel)
+    confidence: ConfidenceModel = Field(default_factory=ConfidenceModel)
     rejection_reasons: list[str] = Field(default_factory=list, description="Reason(s) why this posting was rejected.")
     acceptance_reasons: list[str] = Field(default_factory=list, description="Reason(s) why this posting was accepted.")
     match_report: dict[str, Any] = Field(default_factory=dict, description="Detailed AI resume matching feedback report.")

@@ -32,14 +32,17 @@ class ExperienceFilter(BaseFilter):
             if min_exp is not None and min_exp > experience_limit:
                 rejections.append(f"Minimum experience required is {min_exp} years (limit: {experience_limit})")
 
-            senior_terms = ["senior", "sr.", "lead", "principal", "architect", "manager", "director", "staff", "research scientist"]
-            if any(term in title for term in senior_terms):
-                is_fresher_exception = any(
-                    term in desc
-                    for term in ["fresh graduate", "recent graduate", "new graduate", "university graduate", "no experience", "entry level", "fresher"]
-                )
+            # Check explicit text rejection terms
+            reject_terms = ["2+ years", "3+ years", "4+ years", "5+ years", "senior", "sr.", "lead", "principal", "architect", "manager", "director", "staff"]
+            has_reject_term = any(term in title or term in desc for term in reject_terms)
+
+            if has_reject_term:
+                # Exceptions that explicitly override reject terms
+                accept_terms = ["0-2 years", "0-1 year", "1-2 years", "preferred 1 year", "fresh graduate", "recent graduate", "new graduate", "university graduate", "no experience", "entry level", "fresher", "associate", "early career", "campus", "0 years"]
+                is_fresher_exception = any(term in desc for term in accept_terms)
+                
                 if not is_fresher_exception:
-                    rejections.append("Job title contains senior level keyword classification (or research scientist)")
+                    rejections.append("Job description or title contains senior level/experience requirements without entry-level exceptions")
 
             if not rejections:
                 passed.append(job)

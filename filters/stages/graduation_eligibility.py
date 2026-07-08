@@ -28,30 +28,30 @@ class GraduationEligibilityFilter(BaseFilter):
             batch = str(job.job.graduation_batch or "").lower()
             title = job.job.job_title.lower()
 
-            other_years = ["2023", "2024", "2025", "2026"]
-            has_other_year = any(y in desc or y in batch for y in other_years)
-            has_2027 = "2027" in desc or "2027" in batch
+            # Reject exclusive old batches
+            reject_years = ["2022", "2023", "2024"]
+            
+            # Simple check for exclusive requirements
+            is_rejected_batch = False
+            for y in reject_years:
+                if any(phrase in desc for phrase in [f"{y} only", f"{y} batch only", f"graduated in {y}"]):
+                    is_rejected_batch = True
+                    break
 
-            if has_other_year and not has_2027:
-                if any(
-                    f"{y} batch" in desc or f"{y} graduate" in desc or f"class of {y}" in desc or f"pass out in {y}" in desc
-                    for y in other_years
-                ):
-                    rejections.append("Requires graduation batch other than 2027")
-
-            has_any_year = any(y in desc or y in batch for y in ["2023", "2024", "2025", "2026", "2027", "2028"])
-            is_intern = job.internship.is_internship or "intern" in title or "internship" in title
-
-            if not has_any_year:
-                if is_intern:
-                    job.application.status = "Needs Manual Review"
-                    if not job.job.graduation_batch:
-                        job.job.graduation_batch = "Ambiguous Graduation"
+            if is_rejected_batch:
+                rejections.append("Exclusively requires 2022/2023/2024 graduation")
+            else:
+                # Accept if they have generic terms
+                accept_terms = ["fresher", "graduate", "recent graduate", "entry level", "associate", "entry-level"]
+                has_generic = any(term in desc for term in accept_terms)
+                is_intern = job.internship.is_internship or "intern" in title or "internship" in title
+                
+                if has_generic or is_intern:
+                    # Clear pass
+                    pass
                 else:
-                    if any(term in desc for term in ["immediate join", "already graduated", "graduated before"]):
-                        rejections.append("Requires immediate joiners (graduated already)")
-                    else:
-                        job.application.status = "Needs Manual Review"
+                    # If we aren't sure, don't reject, just mark for manual review
+                    job.application.status = "Needs Manual Review"
 
             if not rejections:
                 passed.append(job)

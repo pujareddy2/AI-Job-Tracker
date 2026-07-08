@@ -28,6 +28,7 @@ from filters.stages import (
     TrustVerificationFilter,
     RuleExplanationFilter
 )
+from filters.confidence_engine import ConfidenceEngine
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -56,6 +57,7 @@ class JobFilteringPipeline:
             TrustVerificationFilter(self.rules_config),
             RuleExplanationFilter(self.rules_config)
         ]
+        self.confidence_engine = ConfidenceEngine()
 
     def _load_rules_config(self) -> dict[str, Any]:
         """Load JSON configuration thresholds file."""
@@ -66,7 +68,7 @@ class JobFilteringPipeline:
                 logger.error(f"Failed to load filter rules config: {exc}")
         return {}
 
-    def execute(self, jobs: list[UniversalJobModel]) -> tuple[list[UniversalJobModel], list[UniversalJobModel]]:
+    def execute(self, jobs: list[UniversalJobModel], tracker: Any = None) -> tuple[list[UniversalJobModel], list[UniversalJobModel]]:
         """
         Execute full multi-stage pipeline run on standard job list.
 
@@ -74,6 +76,8 @@ class JobFilteringPipeline:
         ----------
         jobs : list[UniversalJobModel]
             List of normalized job listings.
+        tracker: Any, optional
+            ObservabilityTracker instance.
 
         Returns
         -------
@@ -102,27 +106,28 @@ class JobFilteringPipeline:
 
             stage_duration = time.time() - stage_start
             
-            # Identify rejected records in this stage
-            passed_ids = {j.identity.job_id for j in next_set}
-            rejected_in_stage = [j for j in current_set if j.identity.job_id not in passed_ids]
-            all_rejected.extend(rejected_in_stage)
+            # Identify rejected records in this stage (but we NO LONGER DROP THEM)
+            # We let all jobs continue to the Confidence Engine
+            current_set = current_set  # Keep all jobs
 
-            stats = {
-                "stage": stage.filter_name,
-                "input": input_len,
-                "output": len(next_set),
-                "rejected": len(rejected_in_stage),
-                "duration_ms": round(stage_duration * 1000, 2)
-            }
-            stage_stats.append(stats)
-            logger.info(
-                f"Stage '{stage.filter_name}' completed",
-                extra=stats
-            )
-            
-            # TrustVerification (Stage 10) returns final deduplicated list
-            # We want to continue chaining the returned set
-            current_set = next_set
+        # Final Phase 20 Confidence Scoring
+        logger.info("Executing Phase 20 Confidence Scoring Engine")
+        final_passed = []
+        for job in current_set:
+            try:
+                job = self.confidence_engine.score_job(job)
+                if job.confidence.overall_score >= 50.0:
+                    final_passed.append(job)
+                else:
+                    all_rejected.append(job)
+                    if tracker:
+                        reason = job.rejection_reasons[0] if getattr(job, "rejection_reasons", []) else "Low Confidence"
+                        tracker.record_rejection(job, stage="Confidence Engine", reason=reason)
+            except Exception as e:
+                logger.error(f"Confidence engine failed for job {job.identity.job_id}: {e}")
+                all_rejected.append(job)
+                if tracker:
+                    tracker.record_rejection(job, stage="Confidence Engine", reason=f"Confidence Engine Error: {e}")
 
         # Compile final stats
         pipeline_duration = time.time() - start_time
@@ -130,11 +135,11 @@ class JobFilteringPipeline:
             "Job filtering pipeline finished",
             extra={
                 "total_input": len(jobs),
-                "total_accepted": len(current_set),
+                "total_accepted": len(final_passed),
                 "total_rejected": len(all_rejected),
                 "total_time_seconds": round(pipeline_duration, 2),
                 "stage_stats": stage_stats
             }
         )
 
-        return current_set, all_rejected
+        return final_passed, all_rejected
