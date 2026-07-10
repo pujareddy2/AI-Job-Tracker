@@ -1,0 +1,25 @@
+# Ignore root Python files and modules from being built as serverless functions by Vercel
+main.py
+config.py
+scheduler/
+filters/
+observability_engine/
+utils/
+logs/
+cache/
+backups/
+credentials/
+tests/
+scripts/
+dashboard_backend/
+deduplication/
+intelligence_engine/
+job_model/
+notifications/
+resume/
+resume_matcher/
+resume_optimizer/
+resume_parser/
+sheets/
+communication_engine/
+application_assistant/
