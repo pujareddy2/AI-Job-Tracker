@@ -17,7 +17,7 @@ import {
   Zap, 
   Activity 
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // SVGs for diagram animations
 function ConnectionLine({ className }: { className?: string }) {
@@ -42,6 +42,24 @@ export default function Home() {
     successRate: 0,
     sourcesScan: 0
   });
+
+  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "parsing" | "done">("idle");
+  const [fileName, setFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      setUploadState("uploading");
+      setTimeout(() => {
+        setUploadState("parsing");
+        setTimeout(() => {
+          setUploadState("done");
+        }, 1500);
+      }, 1500);
+    }
+  };
 
   useEffect(() => {
     // Count-up animations for statistics
@@ -95,7 +113,7 @@ export default function Home() {
           <a href="#features" className="hover:text-primary transition-colors">Features</a>
           <a href="#architecture" className="hover:text-primary transition-colors">Architecture</a>
           <Link href="/dashboard" className="hover:text-primary transition-colors">Live Dashboard</Link>
-          <a href="#docs" className="hover:text-primary transition-colors">Docs</a>
+          <Link href="/docs" className="hover:text-primary transition-colors">Docs</Link>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -165,12 +183,12 @@ export default function Home() {
           >
             <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" /><path d="M9 18c-4.51 2-5-2-7-2" /></svg> GitHub Repository
           </a>
-          <a 
-            href="#docs" 
+          <Link 
+            href="/docs" 
             className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white border border-border-light shadow-sm text-graphite hover:border-graphite/30 hover:bg-softwhite transition-all text-base font-semibold"
           >
             <BookOpen size={18} /> Documentation
-          </a>
+          </Link>
         </motion.div>
 
         {/* Real-time Counter Stats */}
@@ -216,10 +234,59 @@ export default function Home() {
           {/* SVG Animated Architecture */}
           <div className="max-w-4xl mx-auto glass-card rounded-3xl p-8 relative min-h-[500px] flex flex-col justify-between items-center overflow-hidden">
             {/* Top Node */}
-            <div className="relative z-10 w-full flex justify-center mb-8">
-              <div className="px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-accent text-white font-bold shadow-md shadow-primary/20 flex items-center gap-2 border border-primary/20">
-                <Sparkles size={16} /> Resume Import
-              </div>
+            <div className="relative z-10 w-full flex flex-col items-center mb-8">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+                accept=".pdf,.docx,.txt" 
+              />
+              <button
+                onClick={() => uploadState === "idle" && fileInputRef.current?.click()}
+                disabled={uploadState !== "idle"}
+                className={`px-6 py-3.5 rounded-2xl font-bold shadow-md flex items-center gap-2 border transition-all duration-300 transform active:scale-95 ${
+                  uploadState === "idle" 
+                    ? "bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent-hover text-white border-primary/20 cursor-pointer shadow-primary/20" 
+                    : uploadState === "uploading" 
+                    ? "bg-white border-accent/20 text-accent"
+                    : uploadState === "parsing"
+                    ? "bg-white border-secondary/20 text-secondary animate-pulse"
+                    : "bg-emerald-500 border-emerald-600 text-white shadow-emerald-500/20"
+                }`}
+              >
+                {uploadState === "idle" && (
+                  <>
+                    <Sparkles size={16} /> Import Resume
+                  </>
+                )}
+                {uploadState === "uploading" && (
+                  <>
+                    <span className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                    Uploading {fileName}...
+                  </>
+                )}
+                {uploadState === "parsing" && (
+                  <>
+                    <Cpu size={16} className="animate-bounce" />
+                    AI Parsing Profile...
+                  </>
+                )}
+                {uploadState === "done" && (
+                  <>
+                    <CheckCircle size={16} />
+                    Profile Parsed Successfully!
+                  </>
+                )}
+              </button>
+              {uploadState === "done" && (
+                <Link 
+                  href="/dashboard" 
+                  className="mt-3 text-xs font-bold text-primary hover:text-primary-hover underline flex items-center gap-1"
+                >
+                  Go to Live Dashboard and check your matched jobs <ArrowRight size={12} />
+                </Link>
+              )}
             </div>
 
             {/* Stage Grid Container */}
@@ -241,15 +308,39 @@ export default function Home() {
             </div>
 
             {/* Bottom Output Nodes */}
-            <div className="relative z-10 w-full flex flex-col md:flex-row justify-center items-center gap-6 mt-8">
-              <div className="px-5 py-3 rounded-xl bg-white border border-border-light shadow-sm flex items-center gap-2">
-                <FileSpreadsheet size={16} className="text-green-500" /> Google Sheets Sync
+            <div className="relative z-10 w-full grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+              <div className="glass-card rounded-2xl p-5 border border-border-light/40 flex flex-col text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
+                    <FileSpreadsheet size={16} />
+                  </div>
+                  <span className="font-bold text-sm text-graphite">Google Sheets Sync</span>
+                </div>
+                <p className="text-xs text-graphite-light leading-relaxed">
+                  Automatically populates active job applications, priorities, and scores in real-time.
+                </p>
               </div>
-              <div className="px-5 py-3 rounded-xl bg-white border border-border-light shadow-sm flex items-center gap-2">
-                <Terminal size={16} className="text-purple-500" /> Notion Database
+              <div className="glass-card rounded-2xl p-5 border border-border-light/40 flex flex-col text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                    <Terminal size={16} />
+                  </div>
+                  <span className="font-bold text-sm text-graphite">Notion Database</span>
+                </div>
+                <p className="text-xs text-graphite-light leading-relaxed">
+                  Synchronizes application stages, assessments, and offer deadlines cleanly.
+                </p>
               </div>
-              <div className="px-5 py-3 rounded-xl bg-white border border-border-light shadow-sm flex items-center gap-2">
-                <Mail size={16} className="text-accent" /> Daily EmailDigest
+              <div className="glass-card rounded-2xl p-5 border border-border-light/40 flex flex-col text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+                    <Mail size={16} />
+                  </div>
+                  <span className="font-bold text-sm text-graphite">Daily Email Digest</span>
+                </div>
+                <p className="text-xs text-graphite-light leading-relaxed">
+                  Sends automated notifications and pending action alerts directly to your inbox.
+                </p>
               </div>
             </div>
 
@@ -331,32 +422,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Docs/Documentation Section */}
-      <section id="docs" className="py-20 bg-white/60 border-t border-border-light/40">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="text-3xl font-extrabold text-graphite tracking-tight mb-8">Documentation & Architecture</h2>
-          <div className="glass-card rounded-3xl p-8">
-            <h3 className="text-xl font-bold text-graphite flex items-center gap-2">
-              <Terminal size={18} className="text-primary" /> Getting Started Overview
-            </h3>
-            <p className="text-sm text-graphite-light mt-3 leading-relaxed">
-              CareerPilot AI interfaces Next.js 15 app router with a Python FastAPI server. The automation orchestrator runs on a custom cron script executed inside GitHub actions every morning. It pulls resume structures, searches job engines, deduplicates entries, performs matching, and synchronizes spreadsheet layers.
-            </p>
-            <div className="mt-8 border-t border-border-light/40 pt-6">
-              <h4 className="font-bold text-sm text-graphite">Folder Hierarchy</h4>
-              <pre className="bg-graphite text-white/90 p-4 rounded-xl text-xs font-mono mt-3 overflow-x-auto leading-relaxed">
-{`AI-Job-Tracker/
-├── application_assistant/   # Automated form filler & profile manager
-├── dashboard_backend/       # FastAPI server & metrics calculation
-├── filters/                 # Modular filtering & Confidence Engine
-├── observability_engine/     # Telemetry logging & validation reports
-├── scheduler/               # Stage runner & checkpoint orchestrator
-└── frontend/                # Next.js 15 client dashboard (You are here!)`}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </section>
+
 
       {/* Footer */}
       <footer className="mt-auto py-8 border-t border-border-light/30 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40 text-xs text-graphite-light">

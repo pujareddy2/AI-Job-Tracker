@@ -86,7 +86,7 @@ export default function Dashboard() {
       console.warn("FastAPI Server offline or not found, using mockup metrics.", e);
       // Premium Mockup stats matching exact FastAPI return schema
       setStats({
-        candidate_name: "Puja Midde",
+        candidate_name: "PUJA MIDDE",
         pipeline_status: "Standby",
         last_sync_time: "Today, 07:00 AM",
         overall_score: 87,
@@ -156,20 +156,35 @@ export default function Dashboard() {
 
           {/* Nav Items */}
           <nav className="flex flex-col gap-1.5">
-            {menuItems.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as TabType)}
-                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left ${
-                  activeTab === item.id 
-                    ? "bg-gradient-to-r from-primary/10 to-accent/10 text-primary border-l-[3px] border-primary shadow-sm"
-                    : "text-graphite-light hover:bg-gray-100/50 hover:text-graphite"
-                }`}
-              >
-                <item.icon size={18} className={activeTab === item.id ? "text-primary" : "text-graphite-light"} />
-                {item.label}
-              </button>
-            ))}
+            {menuItems.map(item => {
+              if (item.id === "docs") {
+                return (
+                  <Link
+                    key={item.id}
+                    href="/docs"
+                    target="_blank"
+                    className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left text-graphite-light hover:bg-gray-100/50 hover:text-graphite"
+                  >
+                    <item.icon size={18} className="text-graphite-light" />
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as TabType)}
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-left ${
+                    activeTab === item.id 
+                      ? "bg-gradient-to-r from-primary/10 to-accent/10 text-primary border-l-[3px] border-primary shadow-sm"
+                      : "text-graphite-light hover:bg-gray-100/50 hover:text-graphite"
+                  }`}
+                >
+                  <item.icon size={18} className={activeTab === item.id ? "text-primary" : "text-graphite-light"} />
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
         </div>
 
