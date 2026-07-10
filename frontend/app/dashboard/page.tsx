@@ -25,12 +25,12 @@ import {
   ChevronRight
 } from "lucide-react";
 
-import JobTable from "@/components/JobTable";
-import AnalyticsCharts from "@/components/AnalyticsCharts";
-import ResumeIntelligence from "@/components/ResumeIntelligence";
-import SourceIntelligence from "@/components/SourceIntelligence";
-import AutomationFlow from "@/components/AutomationFlow";
-import ObservabilityView from "@/components/ObservabilityView";
+import JobTable from "../../components/JobTable";
+import AnalyticsCharts from "../../components/AnalyticsCharts";
+import ResumeIntelligence from "../../components/ResumeIntelligence";
+import SourceIntelligence from "../../components/SourceIntelligence";
+import AutomationFlow from "../../components/AutomationFlow";
+import ObservabilityView from "../../components/ObservabilityView";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
